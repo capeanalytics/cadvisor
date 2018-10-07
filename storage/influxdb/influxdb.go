@@ -74,6 +74,10 @@ const (
 	serFsLimit string = "fs_limit"
 	// Filesystem usage.
 	serFsUsage string = "fs_usage"
+        // Accelerator usage
+        serAcceleratorMemoryTotal string = "accelerator_memory_total"
+        serAcceleratorMemoryUsed string = "accelerator_memory_used"
+        serAcceleratorDutyCycle   string = "accelerator_duty_cycle"
 )
 
 func new() (storage.StorageDriver, error) {
@@ -213,6 +217,31 @@ func (self *influxdbStorage) containerStatsToPoints(
 	return points
 }
 
+func (self *influxdbStorage) containerAcceleratorStatsToPoints(
+	cInfo *info.ContainerInfo,
+	stats *info.ContainerStats,
+) (points []*influxdb.Point) {
+	// Accelerator metrics per accelerator
+	for _, value := range stats.Accelerators {
+		tags := map[string]string{"make": value.Make, "model": value.Model, "acc_id": value.ID}
+
+		pointMemoryTotal := makePoint(serAcceleratorMemoryTotal, value.MemoryTotal)
+		addTagsToPoint(pointMemoryTotal, tags)
+
+		pointMemoryUsed := makePoint(serAcceleratorMemoryUsed, value.MemoryUsed)
+		addTagsToPoint(pointMemoryUsed, tags)
+
+		pointDutyCycle := makePoint(serAcceleratorDutyCycle, value.DutyCycle)
+		addTagsToPoint(pointDutyCycle, tags)
+
+		points = append(points, pointMemoryTotal, pointMemoryUsed, pointDutyCycle)
+	}
+
+	self.tagPoints(cInfo, stats, points)
+
+	return points
+}
+
 func (self *influxdbStorage) OverrideReadyToFlush(readyToFlush func() bool) {
 	self.readyToFlush = readyToFlush
 }
@@ -233,6 +262,7 @@ func (self *influxdbStorage) AddStats(cInfo *info.ContainerInfo, stats *info.Con
 
 		self.points = append(self.points, self.containerStatsToPoints(cInfo, stats)...)
 		self.points = append(self.points, self.containerFilesystemStatsToPoints(cInfo, stats)...)
+		self.points = append(self.points, self.containerAcceleratorStatsToPoints(cInfo, stats)...)
 		if self.readyToFlush() {
 			pointsToFlush = self.points
 			self.points = make([]*influxdb.Point, 0)
