@@ -199,11 +199,13 @@ func TestContainerFileSystemStatsToPoints(t *testing.T) {
 		false, 2*time.Minute)
 	assert.Nil(err)
 
-	ref := info.ContainerReference{
-		Name: "containerName",
+	cInfo := info.ContainerInfo{
+		ContainerReference: info.ContainerReference{
+			Name: "containerName",
+		},
 	}
 	stats := &info.ContainerStats{}
-	points := storage.containerFilesystemStatsToPoints(ref, stats)
+	points := storage.containerFilesystemStatsToPoints(&cInfo, stats)
 
 	// stats.Filesystem is always nil, not sure why
 	assert.Nil(points)
@@ -215,12 +217,12 @@ func TestContainerStatsToPoints(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, storage)
 
-	ref, stats := createTestStats()
+	cInfo, stats := createTestStats()
 	require.Nil(t, err)
 	require.NotNil(t, stats)
 
 	// When
-	points := storage.containerStatsToPoints(*ref, stats)
+	points := storage.containerStatsToPoints(cInfo, stats)
 
 	// Then
 	assert.NotEmpty(t, points)
@@ -239,6 +241,30 @@ func TestContainerStatsToPoints(t *testing.T) {
 
 	for _, cpu_usage := range stats.Cpu.Usage.PerCpu {
 		assertContainsPointWithValue(t, points, serCpuUsagePerCpu, cpu_usage)
+	}
+}
+
+func TestContainerAcceleratorStatsToPoints(t *testing.T) {
+	// Given
+	storage, err := createTestStorage()
+	require.Nil(t, err)
+	require.NotNil(t, storage)
+
+	cInfo, stats := createTestStats()
+	require.Nil(t, err)
+	require.NotNil(t, stats)
+
+	// When
+	points := storage.containerAcceleratorStatsToPoints(cInfo, stats)
+
+	// Then
+	assert.NotEmpty(t, points)
+	assert.Len(t, points, 3*len(stats.Accelerators))
+
+	for _, accelerator := range stats.Accelerators {
+		assertContainsPointWithValue(t, points, serAcceleratorMemoryTotal, accelerator.MemoryTotal)
+		assertContainsPointWithValue(t, points, serAcceleratorMemoryUsed, accelerator.MemoryUsed)
+		assertContainsPointWithValue(t, points, serAcceleratorDutyCycle, accelerator.DutyCycle)
 	}
 }
 
@@ -274,10 +300,12 @@ func createTestStorage() (*influxdbStorage, error) {
 	return storage, err
 }
 
-func createTestStats() (*info.ContainerReference, *info.ContainerStats) {
-	ref := &info.ContainerReference{
-		Name:    "testContainername",
-		Aliases: []string{"testContainerAlias1", "testContainerAlias2"},
+func createTestStats() (*info.ContainerInfo, *info.ContainerStats) {
+	cInfo := &info.ContainerInfo{
+		ContainerReference: info.ContainerReference{
+			Name:    "testContainername",
+			Aliases: []string{"testContainerAlias1", "testContainerAlias2"},
+		},
 	}
 
 	cpuUsage := info.CpuUsage{
@@ -287,12 +315,27 @@ func createTestStats() (*info.ContainerReference, *info.ContainerStats) {
 		System: uint64(rand.Intn(10000)),
 	}
 
+	gpuIds := []string{"id1", "id2"}
+	accelerators := make([]info.AcceleratorStats, 0)
+	for _, id := range gpuIds {
+		gpu := info.AcceleratorStats{
+			Make:        "Nvidia",
+			Model:       "GeForce 1080 Ti",
+			ID:          id,
+			MemoryTotal: uint64(rand.Intn(10000)),
+			MemoryUsed:  uint64(rand.Intn(10000)),
+			DutyCycle:   uint64(rand.Intn(100)),
+		}
+		accelerators = append(accelerators, gpu)
+	}
+
 	stats := &info.ContainerStats{
 		Timestamp: time.Now(),
 		Cpu: info.CpuStats{
 			Usage:       cpuUsage,
 			LoadAverage: int32(rand.Intn(1000)),
 		},
+		Accelerators: accelerators,
 	}
-	return ref, stats
+	return cInfo, stats
 }
