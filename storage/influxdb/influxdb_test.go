@@ -315,17 +315,16 @@ func createTestStats() (*info.ContainerInfo, *info.ContainerStats) {
 		System: uint64(rand.Intn(10000)),
 	}
 
-
 	gpuIds := []string{"id1", "id2"}
 	accelerators := make([]info.AcceleratorStats, 0)
 	for _, id := range gpuIds {
 		gpu := info.AcceleratorStats{
-			Make: "Nvidia",
-			Model: "GeForce 1080 Ti",
-			ID: id,
+			Make:        "Nvidia",
+			Model:       "GeForce 1080 Ti",
+			ID:          id,
 			MemoryTotal: uint64(rand.Intn(10000)),
-			MemoryUsed: uint64(rand.Intn(10000)),
-			DutyCycle: uint64(rand.Intn(100)),
+			MemoryUsed:  uint64(rand.Intn(10000)),
+			DutyCycle:   uint64(rand.Intn(100)),
 		}
 		accelerators = append(accelerators, gpu)
 	}

@@ -74,10 +74,10 @@ const (
 	serFsLimit string = "fs_limit"
 	// Filesystem usage.
 	serFsUsage string = "fs_usage"
-        // Accelerator usage
-        serAcceleratorMemoryTotal string = "accelerator_memory_total"
-        serAcceleratorMemoryUsed string = "accelerator_memory_used"
-        serAcceleratorDutyCycle   string = "accelerator_duty_cycle"
+	// Accelerator usage
+	serAcceleratorMemoryTotal string = "accelerator_memory_total"
+	serAcceleratorMemoryUsed  string = "accelerator_memory_used"
+	serAcceleratorDutyCycle   string = "accelerator_duty_cycle"
 )
 
 func new() (storage.StorageDriver, error) {
